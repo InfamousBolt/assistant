@@ -23,16 +23,38 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeAudio();
+    // Initialize audio service when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeAudio();
+    });
   }
 
   Future<void> _initializeAudio() async {
     final audioService = context.read<AudioService>();
-    await audioService.initialize();
+    final initialized = await audioService.initialize();
+    if (!initialized) {
+      debugPrint('Failed to initialize audio service');
+    }
   }
 
   void _startListening() async {
     final audioService = context.read<AudioService>();
+
+    // Check if initialized
+    if (!audioService.isInitialized) {
+      debugPrint('Audio service not initialized, initializing now...');
+      final initialized = await audioService.initialize();
+      if (!initialized) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Microphone permission required. Please enable in Settings.'),
+            ),
+          );
+        }
+        return;
+      }
+    }
 
     await audioService.startListening(
       onResult: (transcript) {
