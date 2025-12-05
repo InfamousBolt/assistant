@@ -20,8 +20,7 @@ dependencies:
   camera: ^0.10.5+9
   image: ^4.1.7
 
-  # Audio
-  record: ^5.0.4
+  # Audio & Permissions
   permission_handler: ^11.2.0
 
   # Speech-to-Text

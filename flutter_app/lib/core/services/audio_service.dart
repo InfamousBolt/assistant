@@ -1,20 +1,16 @@
 import 'package:flutter/foundation.dart';
-import 'package:record/record.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 
-/// Audio Service - Handles audio recording and speech-to-text
+/// Audio Service - Handles speech-to-text
 class AudioService extends ChangeNotifier {
-  final _audioRecorder = AudioRecorder();
   final _speechToText = stt.SpeechToText();
 
-  bool _isRecording = false;
   bool _isListening = false;
   bool _isInitialized = false;
   String _lastTranscript = '';
   int _speechDetectedCount = 0;
 
-  bool get isRecording => _isRecording;
   bool get isListening => _isListening;
   bool get isInitialized => _isInitialized;
   String get lastTranscript => _lastTranscript;
@@ -97,32 +93,6 @@ class AudioService extends ChangeNotifier {
     }
   }
 
-  /// Start recording audio to file
-  Future<void> startRecording(String path) async {
-    if (await _audioRecorder.hasPermission()) {
-      await _audioRecorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          sampleRate: 16000,
-          bitRate: 128000,
-        ),
-        path: path,
-      );
-      _isRecording = true;
-      notifyListeners();
-    }
-  }
-
-  /// Stop recording
-  Future<String?> stopRecording() async {
-    if (_isRecording) {
-      final path = await _audioRecorder.stop();
-      _isRecording = false;
-      notifyListeners();
-      return path;
-    }
-    return null;
-  }
 
   /// Detect if text is a question
   bool _isQuestion(String text) {
@@ -154,7 +124,6 @@ class AudioService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _audioRecorder.dispose();
     super.dispose();
   }
 }
