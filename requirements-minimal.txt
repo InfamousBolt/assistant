@@ -1,0 +1,13 @@
+# Minimal requirements for testing without hardware
+opencv-python>=4.8.0
+numpy>=1.24.0
+pillow>=10.0.0
+scikit-image>=0.21.0
+scipy>=1.11.0
+
+# Optional (for real OCR)
+pytesseract>=0.3.10
+
+# For real audio support, install separately:
+# pyaudio>=0.2.13
+# webrtcvad>=2.0.10
