@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:camera/camera.dart';
 
 /// OCR Service - Extracts text from images
 class OcrService {

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../../core/services/memory_service.dart';
 import '../../../core/services/llm_service.dart';
 import '../../../core/services/audio_service.dart';
-import '../../../core/models/conversation_message.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/listening_indicator.dart';
 
@@ -19,7 +18,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final LlmService _llmService = LlmService();
   bool _isLoading = false;
-  String _lastOcrText = '';
+  final String _lastOcrText = '';
 
   @override
   void initState() {
@@ -88,9 +87,11 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       debugPrint('Error generating answer: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;

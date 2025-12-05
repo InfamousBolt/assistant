@@ -44,8 +44,8 @@ class LlmService {
         },
       );
 
-      final answer = response.data['choices'][0]['message']['content'];
-      final tokensUsed = response.data['usage']['total_tokens'];
+      final answer = response.data['choices'][0]['message']['content'] as String;
+      final tokensUsed = response.data['usage']['total_tokens'] as int;
 
       _totalTokens += tokensUsed;
 

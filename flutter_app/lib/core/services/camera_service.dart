@@ -1,13 +1,10 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
-import 'package:image/image.dart' as img;
-import '../config/app_config.dart';
 
 /// Camera Service - Handles camera operations and keyframe detection
 class CameraService extends ChangeNotifier {
   CameraController? _controller;
   bool _isInitialized = false;
-  img.Image? _previousFrame;
   int _frameCount = 0;
   int _keyframeCount = 0;
 
@@ -88,33 +85,6 @@ class CameraService extends ChangeNotifier {
     }
 
     return false;
-  }
-
-  /// Calculate structural similarity (simplified version)
-  double _calculateSSIM(img.Image current, img.Image previous) {
-    // Simplified SSIM calculation
-    // In production, use proper SSIM algorithm
-
-    if (current.width != previous.width ||
-        current.height != previous.height) {
-      return 0.0;
-    }
-
-    int diffPixels = 0;
-    final totalPixels = current.width * current.height;
-
-    for (int y = 0; y < current.height; y++) {
-      for (int x = 0; x < current.width; x++) {
-        final currentPixel = current.getPixel(x, y);
-        final previousPixel = previous.getPixel(x, y);
-
-        if (currentPixel != previousPixel) {
-          diffPixels++;
-        }
-      }
-    }
-
-    return 1.0 - (diffPixels / totalPixels);
   }
 
   /// Dispose resources
