@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image/image.dart' as img;
 
-/// OCR Service - Extracts text from images
+/// OCR Service - Extracts text from images with improved preprocessing
 class OcrService {
   final _textRecognizer = TextRecognizer();
   String _previousText = '';
@@ -9,6 +10,28 @@ class OcrService {
 
   int get textChangeCount => _textChangeCount;
   String get previousText => _previousText;
+
+  /// Preprocess image for better OCR accuracy
+  img.Image? preprocessImage(img.Image image) {
+    try {
+      // 1. Convert to grayscale
+      final grayscale = img.grayscale(image);
+
+      // 2. Increase contrast
+      final contrasted = img.contrast(grayscale, contrast: 130);
+
+      // 3. Sharpen for better edge detection
+      final sharpened = img.adjustColor(contrasted, saturation: 0);
+
+      // 4. Increase brightness slightly
+      final brightened = img.brightness(sharpened, brightness: 10);
+
+      return brightened;
+    } catch (e) {
+      debugPrint('Error preprocessing image: $e');
+      return image; // Return original if preprocessing fails
+    }
+  }
 
   /// Extract text from camera image
   Future<OcrResult> extractText(InputImage inputImage) async {

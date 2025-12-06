@@ -62,6 +62,8 @@ class _ChatScreenState extends State<ChatScreen> {
       },
       onDetectQuestion: (isQuestion) {
         if (isQuestion) {
+          // Question detected - trigger photo capture!
+          debugPrint('📸 Question detected, capturing photo...');
           _handleQuestion(audioService.lastTranscript);
         }
       },
