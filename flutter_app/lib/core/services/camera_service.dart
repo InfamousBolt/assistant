@@ -32,7 +32,7 @@ class CameraService extends ChangeNotifier {
 
       _controller = CameraController(
         camera,
-        ResolutionPreset.medium,
+        ResolutionPreset.high,  // Changed from medium to high
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.yuv420,
       );
