@@ -2,11 +2,17 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:image/image.dart' as img;
 import '../config/app_config.dart';
 
 /// Multi-Photo Vision LLM Service - Handles multiple images at once
 class MultiPhotoVisionService {
   final Dio _dio = Dio();
+
+  // Preprocessing settings (optimized for latency + quality)
+  static const bool enablePreprocessing = true;
+  static const int jpegQuality = 85; // 85-90 is sweet spot
+  static const int maxDimension = 2048; // GPT-4 Vision "high" detail limit
 
   /// Send multiple photos to Vision LLM
   Future<MultiPhotoResponse> analyzeMultiplePhotos({
@@ -19,12 +25,33 @@ class MultiPhotoVisionService {
     }
 
     try {
-      // Convert all images to base64
+      final preprocessingStart = DateTime.now();
+
+      // Convert all images to base64 (with optional preprocessing)
       final base64Images = <String>[];
+      int originalTotalSize = 0;
+      int processedTotalSize = 0;
+
       for (final path in imagePaths) {
-        final bytes = await File(path).readAsBytes();
-        base64Images.add(base64Encode(bytes));
+        final originalBytes = await File(path).readAsBytes();
+        originalTotalSize += originalBytes.length;
+
+        List<int> finalBytes;
+        if (enablePreprocessing) {
+          finalBytes = await _preprocessImage(originalBytes);
+          processedTotalSize += finalBytes.length;
+        } else {
+          finalBytes = originalBytes;
+        }
+
+        base64Images.add(base64Encode(finalBytes));
       }
+
+      final preprocessingTime = DateTime.now().difference(preprocessingStart);
+      debugPrint('🖼️ Preprocessing: ${preprocessingTime.inMilliseconds}ms');
+      debugPrint('📦 Size reduction: ${originalTotalSize ~/ 1024}KB → ${processedTotalSize ~/ 1024}KB '
+          '(${((1 - processedTotalSize / originalTotalSize) * 100).toStringAsFixed(1)}% smaller)');
+
 
       // Build message with multiple images
       final messages = _buildMultiImageMessage(question, base64Images);
@@ -54,10 +81,43 @@ class MultiPhotoVisionService {
         tokensUsed: tokensUsed,
         confidence: 0.95,
         model: 'gpt-4o',
+        preprocessingTimeMs: preprocessingTime.inMilliseconds,
+        sizeSavingsPercent: ((1 - processedTotalSize / originalTotalSize) * 100),
       );
     } catch (e) {
       debugPrint('Multi-photo Vision API Error: $e');
       return _mockAnalyzeMultiplePhotos(imagePaths, question);
+    }
+  }
+
+  /// Preprocess image for optimal Vision LLM performance
+  /// - Compress with JPEG (quality 85) to reduce file size
+  /// - Resize if too large (> 2048px) to stay within API limits
+  /// - Keep full color (NO grayscale - Vision LLMs need color info)
+  Future<List<int>> _preprocessImage(List<int> originalBytes) async {
+    try {
+      // Decode image
+      img.Image? image = img.decodeImage(originalBytes);
+      if (image == null) return originalBytes;
+
+      // Resize if larger than API limit
+      if (image.width > maxDimension || image.height > maxDimension) {
+        debugPrint('📐 Resizing from ${image.width}x${image.height}');
+        if (image.width > image.height) {
+          image = img.copyResize(image, width: maxDimension);
+        } else {
+          image = img.copyResize(image, height: maxDimension);
+        }
+      }
+
+      // Compress with JPEG (keeps color, reduces file size)
+      final compressed = img.encodeJpg(image, quality: jpegQuality);
+
+      debugPrint('✅ Compressed: ${originalBytes.length ~/ 1024}KB → ${compressed.length ~/ 1024}KB');
+      return compressed;
+    } catch (e) {
+      debugPrint('⚠️ Preprocessing failed, using original: $e');
+      return originalBytes;
     }
   }
 
@@ -191,6 +251,8 @@ class MultiPhotoResponse {
   final int tokensUsed;
   final double confidence;
   final String model;
+  final int preprocessingTimeMs;
+  final double sizeSavingsPercent;
 
   MultiPhotoResponse({
     required this.answer,
@@ -198,5 +260,12 @@ class MultiPhotoResponse {
     required this.tokensUsed,
     required this.confidence,
     required this.model,
+    this.preprocessingTimeMs = 0,
+    this.sizeSavingsPercent = 0.0,
   });
+
+  /// Get preprocessing summary
+  String get preprocessingSummary =>
+      'Preprocessing: ${preprocessingTimeMs}ms, '
+      'Size reduced by ${sizeSavingsPercent.toStringAsFixed(1)}%';
 }

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:image/image.dart' as img;
 import '../config/app_config.dart';
 import '../models/conversation_message.dart';
 
@@ -10,6 +11,11 @@ class VisionLlmService {
   final Dio _dio = Dio();
   int _totalCalls = 0;
   int _totalTokens = 0;
+
+  // Preprocessing settings (same as multi-photo service)
+  static const bool enablePreprocessing = true;
+  static const int jpegQuality = 85;
+  static const int maxDimension = 2048;
 
   int get totalCalls => _totalCalls;
   int get totalTokens => _totalTokens;
@@ -28,9 +34,22 @@ class VisionLlmService {
     }
 
     try {
-      // Read image and convert to base64
-      final imageBytes = await File(imagePath).readAsBytes();
-      final base64Image = base64Encode(imageBytes);
+      final preprocessingStart = DateTime.now();
+
+      // Read image and optionally preprocess
+      final originalBytes = await File(imagePath).readAsBytes();
+      List<int> finalBytes;
+
+      if (enablePreprocessing) {
+        finalBytes = await _preprocessImage(originalBytes);
+        final preprocessingTime = DateTime.now().difference(preprocessingStart);
+        debugPrint('🖼️ Single photo preprocessing: ${preprocessingTime.inMilliseconds}ms');
+        debugPrint('📦 Size: ${originalBytes.length ~/ 1024}KB → ${finalBytes.length ~/ 1024}KB');
+      } else {
+        finalBytes = originalBytes;
+      }
+
+      final base64Image = base64Encode(finalBytes);
 
       // Build messages for GPT-4 Vision
       final messages = _buildVisionMessages(question, base64Image, context);
@@ -66,6 +85,32 @@ class VisionLlmService {
       debugPrint('Vision LLM API Error: $e');
       // Fallback to mock
       return _mockGenerateAnswerWithImage(question, imagePath, context);
+    }
+  }
+
+  /// Preprocess image for optimal Vision LLM performance
+  /// - Compress with JPEG (quality 85) to reduce file size
+  /// - Resize if too large (> 2048px) to stay within API limits
+  /// - Keep full color (NO grayscale - Vision LLMs need color info)
+  Future<List<int>> _preprocessImage(List<int> originalBytes) async {
+    try {
+      img.Image? image = img.decodeImage(originalBytes);
+      if (image == null) return originalBytes;
+
+      // Resize if larger than API limit
+      if (image.width > maxDimension || image.height > maxDimension) {
+        if (image.width > image.height) {
+          image = img.copyResize(image, width: maxDimension);
+        } else {
+          image = img.copyResize(image, height: maxDimension);
+        }
+      }
+
+      // Compress with JPEG (keeps color, reduces file size)
+      return img.encodeJpg(image, quality: jpegQuality);
+    } catch (e) {
+      debugPrint('⚠️ Preprocessing failed, using original: $e');
+      return originalBytes;
     }
   }
 
